@@ -1,13 +1,30 @@
+
 import 'package:flutter/material.dart';
 import 'model.dart';
 import 'view_model.dart';
 
-final names = ['📝 未着手 (To Do)', '🔨 作業中 (Doing)', '✅ 完了 (Done)'];
-final labels = ['未着手', '作業中', '完了'];
-final colors = [Colors.blue.shade50, Colors.orange.shade50, Colors.green.shade50];
+// 買い物リストのステータス
+final names = [
+  '💗 買いたいもの',
+  '🛒 買い物かご',
+  '✅ 購入済み',
+];
+
+final labels = [
+  '買いたいもの',
+  '買い物かご',
+  '購入済み',
+];
+
+final colors = [
+  Colors.pink.shade50,
+  Colors.orange.shade50,
+  Colors.green.shade50,
+];
 
 class KanbanView extends StatefulWidget {
   final KanbanViewModel vm;
+
   KanbanView(this.vm, {super.key});
 
   @override
@@ -24,10 +41,11 @@ class _KanbanViewState extends State<KanbanView> {
 
   Future<void> edit(Task t) async {
     var text = t.title;
+
     final result = await showDialog<String>(
       context: context,
       builder: (c) => AlertDialog(
-        title: Text('タスクを編集'),
+        title: Text('商品を編集'),
         content: TextFormField(
           initialValue: text,
           autofocus: true,
@@ -45,13 +63,18 @@ class _KanbanViewState extends State<KanbanView> {
         ],
       ),
     );
-    if (result != null) widget.vm.rename(t, result);
-  }
 
+    if (result != null) {
+      widget.vm.rename(t, result);
+    }
+  }
 
   Widget taskCard(Task t) {
     final s = t.status;
-    final buttons = Wrap(spacing: 4, children: [
+
+    final buttons = Wrap(
+      spacing: 4,
+      children: [
         if (s > 0)
           TextButton(
             onPressed: () => widget.vm.move(t, s - 1),
@@ -61,22 +84,29 @@ class _KanbanViewState extends State<KanbanView> {
           FilledButton(
             onPressed: () => widget.vm.move(t, s + 1),
             child: Text('${labels[s + 1]}へ →'),
+          ),
+      ],
+    );
+
+    return Card(
+      child: ListTile(
+        title: Text(t.title),
+        subtitle: buttons,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(Icons.edit),
+              onPressed: () => edit(t),
+            ),
+            IconButton(
+              icon: Icon(Icons.delete_outline),
+              onPressed: () => widget.vm.remove(t),
+            ),
+          ],
         ),
-    ]);
-    return Card(child: ListTile(
-      title: Text(t.title),
-      subtitle: buttons,
-      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        IconButton(
-          icon: Icon(Icons.edit),
-          onPressed: () => edit(t),
-        ),
-        IconButton(
-          icon: Icon(Icons.delete_outline),
-          onPressed: () => widget.vm.remove(t),
-        ),
-      ]),
-    ));
+      ),
+    );
   }
 
   Widget lane(int s) {
@@ -84,17 +114,27 @@ class _KanbanViewState extends State<KanbanView> {
       for (final t in widget.vm.tasks)
         if (t.status == s) taskCard(t),
     ];
+
     return SizedBox(
       width: 300,
       child: Card(
         color: colors[s],
-        child: Column(children: [
-          ListTile(
-            title: Text(names[s]),
-            trailing: Text('${cards.length}件'),
-          ),
-          Expanded(child: ListView(children: cards)),
-        ]),
+        child: Column(
+          children: [
+            ListTile(
+              title: Text(
+                names[s],
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              trailing: Text('${cards.length}件'),
+            ),
+            Expanded(
+              child: ListView(children: cards),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -109,41 +149,64 @@ class _KanbanViewState extends State<KanbanView> {
   Widget build(BuildContext context) {
     final field = TextField(
       controller: input,
+      onSubmitted: (_) {
+        if (input.text.trim().isNotEmpty) add();
+      },
       decoration: InputDecoration(
-        labelText: '新しいタスク',
-        hintText: '例：レポートを書く',
+        labelText: '買いたいものを追加',
+        hintText: '例：新しいバッグ、イヤホン',
+        prefixIcon: Icon(Icons.shopping_bag_outlined),
         border: OutlineInputBorder(),
       ),
     );
+
     final button = ValueListenableBuilder(
       valueListenable: input,
-      builder: (context, value, child) => FilledButton.icon(
-        onPressed: value.text.isEmpty ? null : add,
+      builder: (context, value, child) =>
+          FilledButton.icon(
+        onPressed: value.text.trim().isEmpty ? null : add,
         icon: Icon(Icons.add),
-        label: Text('未着手に追加'),
+        label: Text('買いたいものに追加'),
       ),
     );
-    final entry = Card(child: Padding(
-      padding: EdgeInsets.all(12),
-      child: Column(children: [
-        field,
-        Align(alignment: Alignment.centerRight, child: button),
-      ]),
-    ));
+
+    final entry = Card(
+      child: Padding(
+        padding: EdgeInsets.all(12),
+        child: Column(
+          children: [
+            field,
+            SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: button,
+            ),
+          ],
+        ),
+      ),
+    );
+
     final board = ListenableBuilder(
       listenable: widget.vm,
       builder: (context, child) => ListView(
         scrollDirection: Axis.horizontal,
-        children: [for (int s = 0; s < 3; s++) lane(s)],
+        children: [
+          for (int s = 0; s < 3; s++) lane(s),
+        ],
       ),
     );
 
     return Scaffold(
-      appBar: AppBar(title: Text('📋 Kanban')),
-      body: Column(children: [
-        entry,
-        Expanded(child: board),
-      ]),
+      appBar: AppBar(
+        title: Text('🛍️ Shopping List'),
+        backgroundColor: Colors.pink.shade100,
+      ),
+      body: Column(
+        children: [
+          entry,
+          Expanded(child: board),
+        ],
+      ),
     );
   }
 }
